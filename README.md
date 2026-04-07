@@ -17,20 +17,10 @@ The evaluation system compares submissions against ground truth using:
 
 ## Features
 
-✨ **Comprehensive Evaluation Metrics**
+**Comprehensive Evaluation Metrics**
 - Categorical field evaluation using F1-scores
 - Text similarity evaluation using CIDEr and BERTScore
 - Flexible time tolerance for event timing
-
-🎬 **Video Processing**
-- Extract frames from videos
-- Generate video clips with violations
-- Batch processing capabilities
-
-📊 **Data Management**
-- JSON-based ground truth management
-- Annotation CSV to JSON conversion
-- Structured submission format validation
 
 ## Installation
 
@@ -42,7 +32,7 @@ The evaluation system compares submissions against ground truth using:
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/traffic-violation-detection.git
+git clone https://github.com/abduljawada/traffic-violation-evaluation.git
 cd traffic-violation-detection
 ```
 
@@ -70,28 +60,6 @@ python evaluate.py submission.json --gt groundtruth.json
 For detailed results with individual field scores:
 ```bash
 python evaluate.py submission.json --gt groundtruth.json -v
-```
-
-### Generating Video Clips
-
-Extract video clips for specific violation types:
-```bash
-python generate_clips.py
-```
-
-### Extracting Frames
-
-Extract frames from videos:
-```bash
-python generate_frames.py
-```
-
-### Processing Annotations
-
-Convert annotation CSV to JSON format:
-```bash
-cd annotations
-python csv_to_json.py
 ```
 
 ## Submission Format
@@ -166,24 +134,10 @@ Mean of all individual field scores, providing a holistic performance metric.
 
 ```
 .
-├── evaluate.py                 # Main evaluation script
-├── generate_clips.py          # Video clip generation
-├── generate_frames.py         # Frame extraction
-├── generate_image.py          # Image generation utilities
 ├── groundtruth.json           # Ground truth data
 ├── requirements.txt           # Python dependencies
 ├── README.md                  # This file
 ├── LICENSE                    # MIT License
-├── annotations/               # Annotation files
-│   ├── csv_to_json.py        # Conversion utility
-│   └── videos-edited.json    # Processed annotations
-├── clips/                     # Generated video clips
-│   ├── crossing/
-│   ├── other/
-│   ├── uturn/
-│   └── wrong_way/
-├── extracted_frames/          # Extracted video frames
-├── videos/                    # Source videos
 └── .github/                   # GitHub configuration
     ├── CONTRIBUTING.md       # Contributing guidelines
     └── ISSUE_TEMPLATE/       # Issue templates
@@ -256,11 +210,7 @@ Contributions are welcome! Please see [CONTRIBUTING.md](.github/CONTRIBUTING.md)
 If you use this evaluation suite in your research, please cite:
 
 ```bibtex
-@software{traffic_violation_2026,
-  title={Traffic Violation Detection Evaluation Suite},
-  author={Ahmed},
-  year={2026}
-}
+TBD
 ```
 
 ## License
@@ -269,7 +219,7 @@ This project is licensed under the MIT License - see [LICENSE](LICENSE) file for
 
 ## Authors
 
-- **Ahmed** - Initial development
+TBD
 
 ## Acknowledgments
 
