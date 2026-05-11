@@ -57,63 +57,57 @@ Evaluate a submission JSON file against ground truth:
 python evaluate.py submission.json --gt groundtruth.json
 ```
 
-For detailed results with individual field scores:
-```bash
-python evaluate.py submission.json --gt groundtruth.json -v
-```
-
 ## Submission Format
 
-Submissions should be in JSON format with the following structure:
+Submissions should be a flat JSON array where each object describes one exported clip. `clip_name` is the clip identifier used to align submission rows to ground-truth rows when both files provide unique clip names. `clip_name` is used for matching only and is not scored as a categorical field.
 
 ```json
 [
   {
-    "video_id": "video_001",
-    "violations": [
-      {
-        "violation_type": "wrong_way",
-        "violator_type": "car",
-        "date": "2024-01-15",
-        "time": "14:30:00",
-        "color": "red",
-        "entering_direction": "left",
-        "entering_lane": "1",
-        "exiting_direction": "right",
-        "exiting_lane": "2",
-        "intersection_type": "four-way intersection",
-        "weather": "clear",
-        "light": "daylight",
-        "description": "Red car turning left from wrong lane at intersection"
-      }
-    ]
+    "clip_name": "0_0_001.mp4",
+    "date": "2018-07-17",
+    "time": "06:01:20",
+    "violation_type": "wrong_way",
+    "violator_type": "car",
+    "color": "dark",
+    "entering_direction": "upper left",
+    "entering_lane": "1",
+    "exiting_direction": "bottom left",
+    "exiting_lane": "3",
+    "intersection_type": "T-intersection",
+    "weather": "clear",
+    "light": "daylight",
+    "description": "Dark car traveling against the designated direction of traffic."
   }
 ]
 ```
 
+The evaluator also accepts the previous grouped format, `[{ "video_id": "...", "violations": [...] }]`, for backwards compatibility. In both formats, `video_id`, `clip_name`, `clip_export_name`, `start_time`, and `end_time` are ignored during scoring.
+
 ### Supported Violation Types
 - `wrong_way`
 - `uturn` (U-turn)
-- `crossing`
+- `jaywalking`
 - `red_light`
-- `wrong_lane`
-- `illegal_lane_switching`
+- `lane_use_control`
+- `lane_discipline`
+- `no_violation`
 
 ### Supported Values
 
 | Field | Options |
 |-------|---------|
-| `violator_type` | car, motorcycle, pedestrian, bus, truck |
-| `color` | dark, light, red, green, yellow, blue, brown, purple, pink, orange, gray, mixed |
-| `direction` | upper_left, upper_right, bottom_left, bottom_right, left, right, up, down |
-| `lane` | 1, 2, 3, 4 |
+| `violator_type` | car, motorcycle, pedestrian, bus, truck, na |
+| `color` | dark, light, red, green, yellow, blue, brown, purple, pink, orange, gray, mixed, na |
+| `entering_direction`, `exiting_direction` | upper left, upper right, bottom left, bottom right, left, right, up, down, na |
+| `entering_lane`, `exiting_lane` | 1, 2, 3, 4, na |
 | `intersection_type` | T-intersection, four-way intersection |
 | `weather` | clear, rainy, cloudy |
-| `light` | daylight, night, dawn, dusk |
+| `light` | daylight, night |
 
 ## Ground Truth Format
 
-Ground truth data is stored in `groundtruth.json` with the same structure as submissions.
+Ground truth data is stored in `groundtruth.json` with the same flat structure as submissions. If both ground truth and submission files contain unique `clip_name` values, rows are aligned by `clip_name`; otherwise, rows are compared in file order.
 
 ## Evaluation Metrics
 
