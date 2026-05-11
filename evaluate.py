@@ -8,6 +8,8 @@ Compares a submission JSON file against the ground truth (videos-edited.json).
 Usage:
     python evaluate.py <submission.json> [--gt groundtruth.json]
 """
+from __future__ import annotations
+
 from pyexpat import model
 import argparse
 import json
@@ -15,6 +17,7 @@ import re
 import sys
 from collections import Counter
 from pathlib import Path
+from typing import List, Tuple
 import numpy as np
 from sklearn.metrics import f1_score
 from bert_score import score as bert_score_fn
@@ -83,7 +86,7 @@ def cider_norm(candidates: list[str], references: list[str]) -> float:
 # Helpers
 # ---------------------------------------------------------------------------
 # Fields to skip during evaluation
-SKIP_FIELDS = {"Comment", "start_time", "end_time", "video_id"}
+SKIP_FIELDS = {"Comment", "start_time", "end_time", "video_id", "clip_name", "clip_export_name"}
 DESCRIPTION_FIELD = "description"
 TIME_FIELD = "time"
 TIME_TOLERANCE_SEC = 7
@@ -91,19 +94,69 @@ def _load_json(path: str) -> list | dict:
     """Load a JSON file (must be valid JSON with no comments)."""
     with open(path, encoding="utf-8") as f:
         return json.load(f)
-def _flatten_violations(data: list[dict]) -> list[dict]:
+def _normalize_violations(data: list[dict]) -> list[dict]:
     """
-    Flatten the nested structure: each video has a list of violations.
-    Returns a flat list of violation dicts, each augmented with video_id.
+    Normalize supported annotation JSON structures into a flat list of rows.
+
+    Supported formats:
+    - New flat export: [{clip_name, violation_type, ...}, ...]
+    - Legacy grouped export: [{video_id, violations: [{...}, ...]}, ...]
     """
     violations = []
-    for video in data:
-        vid = video.get("video_id", "unknown")
-        for v in video.get("violations", []):
-            entry = dict(v)
-            entry["video_id"] = vid
-            violations.append(entry)
+    if not isinstance(data, list):
+        raise ValueError("Annotation JSON must be a list.")
+
+    for item in data:
+        if not isinstance(item, dict):
+            raise ValueError("Annotation JSON entries must be objects.")
+
+        if "violations" in item:
+            if not isinstance(item.get("violations"), list):
+                raise ValueError("Legacy grouped entries must contain a list under 'violations'.")
+            for violation in item.get("violations", []):
+                if not isinstance(violation, dict):
+                    raise ValueError("Violation entries must be objects.")
+                violations.append(dict(violation))
+        else:
+            violations.append(dict(item))
+
     return violations
+
+
+def _has_unique_clip_names(rows: list[dict]) -> bool:
+    clip_names = [str(row.get("clip_name", "")).strip() for row in rows]
+    return bool(clip_names) and all(clip_names) and len(set(clip_names)) == len(clip_names)
+
+
+def _align_by_clip_name(gt_rows: list[dict], sub_rows: list[dict]) -> tuple[list[dict], list[dict]]:
+    """
+    Align rows by clip_name when both files provide unique clip names.
+    Falls back to the existing order-based behavior otherwise.
+    """
+    if not (_has_unique_clip_names(gt_rows) and _has_unique_clip_names(sub_rows)):
+        return gt_rows, sub_rows
+
+    sub_by_clip = {str(row["clip_name"]).strip(): row for row in sub_rows}
+    aligned_gt = []
+    aligned_sub = []
+    missing = []
+    for gt_row in gt_rows:
+        clip_name = str(gt_row["clip_name"]).strip()
+        sub_row = sub_by_clip.get(clip_name)
+        if sub_row is None:
+            missing.append(clip_name)
+            continue
+        aligned_gt.append(gt_row)
+        aligned_sub.append(sub_row)
+
+    extra = sorted(set(sub_by_clip) - {str(row["clip_name"]).strip() for row in gt_rows})
+    if missing or extra:
+        print(
+            f"⚠  Warning: clip_name alignment skipped {len(missing)} missing ground-truth clips "
+            f"and {len(extra)} extra submission clips.",
+            file=sys.stderr,
+        )
+    return aligned_gt, aligned_sub
 def _time_to_seconds(t: str) -> float:
     """Convert a HH:MM:SS time string to total seconds."""
     parts = t.strip().split(":")
@@ -134,8 +187,9 @@ def _detect_fields(first_violation: dict) -> Tuple[List[str], bool, bool]:
 def evaluate(groundtruth_path: str, submission_path: str) -> dict:
     gt_data = _load_json(groundtruth_path)
     sub_data = _load_json(submission_path)
-    gt_violations = _flatten_violations(gt_data)
-    sub_violations = _flatten_violations(sub_data)
+    gt_violations = _normalize_violations(gt_data)
+    sub_violations = _normalize_violations(sub_data)
+    gt_violations, sub_violations = _align_by_clip_name(gt_violations, sub_violations)
     if len(gt_violations) != len(sub_violations):
         print(
             f"⚠  Warning: Ground truth has {len(gt_violations)} violations "
@@ -146,6 +200,8 @@ def evaluate(groundtruth_path: str, submission_path: str) -> dict:
     n = min(len(gt_violations), len(sub_violations))
     gt_violations = gt_violations[:n]
     sub_violations = sub_violations[:n]
+    if not gt_violations:
+        raise ValueError("No comparable annotation rows found.")
     # Determine evaluable fields from the FIRST ground-truth entry
     categorical_fields, has_description, has_time = _detect_fields(gt_violations[0])
     scores: dict[str, float] = {}
